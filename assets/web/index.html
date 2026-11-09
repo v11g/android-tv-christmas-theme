@@ -140,7 +140,8 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   const THEME = { n: "Theme", theme: true, bg: "linear-gradient(135deg,#e7c27a,#b0549b)", g: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".85"/></svg>' };
   const DEMO = ["Movies", "Music", "Photos", "Games", "Browser", "Settings"].map((n, i) => ({ n, bg: `hsl(${i * 53 + 10} 50% 40%)`, g: n[0] }));
-  const APPS = (bridge ? JSON.parse(bridge.apps()).map((a) => ({ n: a.label, pkg: a.pkg, bg: "#1b1826", g: `<img src="${a.icon}" alt="">` })) : DEMO).concat([THEME]);
+  const APPS = (bridge ? JSON.parse(bridge.apps()).map((a) => ({ n: a.label, pkg: a.pkg, bg: "#1b1826", g: `<img src="${a.icon}" alt="">` })) : DEMO);
+  APPS.unshift(THEME); // Theme is the first stop: the sleigh starts there
   const mod = (a, n) => ((a % n) + n) % n;
 
   // --- deterministic random so tiled scenery looks hand-placed but repeats seamlessly ---
