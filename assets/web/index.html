@@ -22,14 +22,16 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
 .layer, #fx, #sheet, #fly, #app { position: absolute; inset: 0; }
 .strip { position: absolute; left: 0; top: 0; width: 3840px; height: 1080px; display: flex; will-change: transform; }
 .strip > svg { flex: 0 0 1920px; }
-#sky { background-repeat: no-repeat; }
+#sky { overflow: hidden; }
+#skyPan { position: absolute; left: 0; top: 0; background-repeat: no-repeat; will-change: transform; } /* panned by the compositor: no repaint per frame */
 #stops .stop { position: absolute; top: 560px; width: 340px; margin-left: -170px; display: flex; flex-direction: column; align-items: center; will-change: transform; }
 .tile { position: absolute; left: 100px; top: 70px; width: 140px; height: 140px; border-radius: 34px; display: grid; place-items: center; color: #fff; font: 700 38px var(--sans); letter-spacing: -0.02em; overflow: hidden; transition: box-shadow 220ms ease; }
 .tile svg { width: 64px; height: 64px; }
-.label { margin-top: 6px; font: 700 26px var(--sans); letter-spacing: 0.04em; text-transform: uppercase; transition: opacity 220ms ease; }
+.label { margin-top: 6px; font: 700 26px var(--sans); letter-spacing: 0.04em; text-transform: uppercase; transition: opacity 220ms ease; will-change: opacity; }
 #sleighWrap { position: absolute; left: 0; top: 742px; width: 560px; height: 230px; will-change: transform; }
 #sleighFlip { width: 100%; height: 100%; transition: transform 320ms cubic-bezier(0.3, 0.7, 0.2, 1); }
-.leg { transform-box: fill-box; transform-origin: 50% 0; }
+.leg { position: absolute; transform-origin: 50% 0; will-change: transform; overflow: visible; } /* own layer: swinging a leg never repaints the sleigh */
+#sleigh > svg:not(.leg) { position: relative; }
 #hud { position: absolute; top: 44px; right: 64px; display: flex; flex-direction: column; align-items: end; gap: 2px; pointer-events: none; }
 .greet { font: 600 50px var(--script); color: #ffe6a6; text-shadow: 0 2px 14px rgb(60 20 60 / 0.5); }
 #sheet { transform: translateY(100%); }
@@ -88,8 +90,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
 @media (prefers-reduced-motion: reduce) { .obj, .obj * { animation: none !important; transition: none !important; } }
 
 /* Photo style: real dusk photo, illustrated sleigh, snow banks with icons set into them */
-[data-style="photo"] #sky { background-image: url("img/strymba.jpg"); filter: saturate(1.05) brightness(0.9); }
-[data-style="photo"] #sky::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(30 18 60 / 0.25), transparent 35%, rgb(60 40 100 / 0.35) 70%); }
+[data-style="photo"] #sky::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.1)), /* = brightness(0.9); a filter on the moving photo costs a full redraw each frame */ linear-gradient(180deg, rgb(30 18 60 / 0.25), transparent 35%, rgb(60 40 100 / 0.35) 70%); }
 [data-style="photo"] .label { color: #fff; text-shadow: 0 2px 10px rgb(40 20 70 / 0.7); }
 [data-style="photo"] .tile { box-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.18), 0 10px 24px rgb(60 40 110 / 0.35); }
 [data-style="photo"] .stop.on .tile { box-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.18), 0 0 0 6px #fff, 0 0 46px 12px rgb(255 214 140 / 0.85); }
@@ -109,7 +110,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
   <div class="screen" id="screen">
     <div id="stage" data-style="photo" role="application" aria-label="Màn hình TV: trái phải để chọn ứng dụng, Enter để mở">
       <div id="world">
-        <div class="layer" id="sky"></div>
+        <div class="layer" id="sky"><div id="skyPan"></div></div>
         <div class="layer" id="far"><div class="strip"></div></div>
         <div class="layer" id="mid"><div class="strip"></div></div>
         <div class="layer" id="ground"><div class="strip"></div></div>
@@ -218,10 +219,12 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
       ${dots}</svg>`;
   }
 
+  const legBox = (x, y, shape) => `<svg class="leg" viewBox="${x} ${y} 10 50" width="10" height="50" style="left:${x}px;top:${y}px">${shape}</svg>`;
   function photoSleigh() {
-    const leg = (x, y) => `<rect class="leg" x="${x}" y="${y}" width="9" height="50" rx="4" fill="#6e4429"/>`;
+    const leg = (x, y) => legBox(x, y, `<rect x="${x}" y="${y}" width="9" height="50" rx="4" fill="#6e4429"/>`);
+    const legs = (cx) => leg(cx - 34, 150) + leg(cx - 18, 152) + leg(cx + 18, 152) + leg(cx + 34, 150);
     const deer = (cx, nose) => `
-      <g>${leg(cx - 34, 150)}${leg(cx - 18, 152)}${leg(cx + 18, 152)}${leg(cx + 34, 150)}
+      <g>
       <ellipse cx="${cx}" cy="148" rx="52" ry="24" fill="#93603c"/><ellipse cx="${cx - 6}" cy="156" rx="34" ry="12" fill="#c99a6d" opacity=".55"/>
       <path d="M${cx + 30},134 L${cx + 52},96 L${cx + 66},102 L${cx + 52},140Z" fill="#93603c"/>
       <ellipse cx="${cx + 66}" cy="96" rx="22" ry="13" fill="#a86f45"/>
@@ -230,7 +233,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
       <path d="M${cx + 58},86 L${cx + 50},62 L${cx + 40},56 M${cx + 50},62 L${cx + 56},50 M${cx + 66},84 L${cx + 70},60 L${cx + 80},52 M${cx + 70},60 L${cx + 64},48" stroke="#5b3a22" stroke-width="5" fill="none" stroke-linecap="round"/>
       <path d="M${cx - 40},132 Q${cx},120 ${cx + 40},132" stroke="#c8212f" stroke-width="7" fill="none"/>
       <circle cx="${cx}" cy="127" r="5" fill="#ffd36b"/></g>`;
-    return `<svg viewBox="0 0 560 230" width="560" height="230" xmlns="http://www.w3.org/2000/svg">
+    return `${legs(300)}${legs(440)}<svg viewBox="0 0 560 230" width="560" height="230" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="sl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4283a"/><stop offset="1" stop-color="#7c0f1e"/></linearGradient>
       <linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#a77a2c"/><stop offset=".5" stop-color="#ffe3a0"/><stop offset="1" stop-color="#a77a2c"/></linearGradient></defs>
       <ellipse cx="280" cy="214" rx="250" ry="10" fill="#6c5a99" opacity=".25"/>
@@ -310,9 +313,10 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
   }
 
   function origamiSleigh() {
-    const leg = (x, y) => `<polygon class="leg" points="${x},${y} ${x + 10},${y} ${x + 7},${y + 50} ${x + 1},${y + 50}" fill="#7b4b2a"/>`;
+    const leg = (x, y) => legBox(x, y, `<polygon points="${x},${y} ${x + 10},${y} ${x + 7},${y + 50} ${x + 1},${y + 50}" fill="#7b4b2a"/>`);
+    const legs = (cx) => leg(cx - 36, 148) + leg(cx - 20, 150) + leg(cx + 16, 150) + leg(cx + 32, 148);
     const deer = (cx, nose) => `
-      <g>${leg(cx - 36, 148)}${leg(cx - 20, 150)}${leg(cx + 16, 150)}${leg(cx + 32, 148)}
+      <g>
       <polygon points="${cx - 54},150 ${cx - 30},124 ${cx + 44},126 ${cx + 54},150" fill="#b77a45"/><polygon points="${cx - 54},150 ${cx + 54},150 ${cx + 30},170 ${cx - 40},168" fill="#8c5a31"/>
       <polygon points="${cx + 30},128 ${cx + 52},92 ${cx + 62},96 ${cx + 48},134" fill="#b77a45"/>
       <polygon points="${cx + 48},82 ${cx + 90},94 ${cx + 52},104" fill="#c98d55"/><polygon points="${cx + 52},104 ${cx + 90},94 ${cx + 60},112" fill="#9a6238"/>
@@ -320,7 +324,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
       <polyline points="${cx + 54},84 ${cx + 44},58 ${cx + 34},62 M${cx + 44},58 ${cx + 52},44" stroke="#5b3a22" stroke-width="5" fill="none"/>
       <polyline points="${cx + 62},82 ${cx + 66},56 ${cx + 78},50 M${cx + 66},56 ${cx + 60},44" stroke="#5b3a22" stroke-width="5" fill="none"/>
       <polygon points="${cx - 36},130 ${cx + 36},130 ${cx + 30},138 ${cx - 30},138" fill="#e2574c"/></g>`;
-    return `<svg viewBox="0 0 560 230" width="560" height="230" xmlns="http://www.w3.org/2000/svg">
+    return `${legs(300)}${legs(440)}<svg viewBox="0 0 560 230" width="560" height="230" xmlns="http://www.w3.org/2000/svg">
       <polygon points="40,220 520,220 500,212 60,212" fill="#1d2a55" opacity=".25"/>
       <g id="deers">${deer(300, false)}${deer(440, true)}</g>
       <polyline points="150,112 350,130" stroke="#ffd27a" stroke-width="3"/>
@@ -379,14 +383,11 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
   Object.keys(SCENES).forEach((k) => (SCENES[k].pal = PAL[k]));
   const P = () => SCENES[scene].pal;
   function applyScene() {
-    const sc = SCENES[scene], sky = $("sky");
-    if (style === "photo") {
-      sky.style.backgroundImage = `url("${sc.img}")`;
-      sky.style.backgroundSize = `${sc.bw}px ${sc.bh}px`;
-    } else {
-      sky.style.backgroundImage = `linear-gradient(180deg, ${sc.ori[0]} 0%, ${sc.ori[1]} 55%, ${sc.ori[2]} 100%)`;
-      sky.style.backgroundSize = "";
-    }
+    const sc = SCENES[scene], sky = $("sky"), pan = $("skyPan"), photo = style === "photo";
+    Object.assign(pan.style, photo
+      ? { display: "", backgroundImage: `url("${sc.img}")`, width: sc.bw + "px", height: sc.bh + "px", backgroundSize: "100% 100%", top: sc.y + "px" }
+      : { display: "none", backgroundImage: "" });
+    sky.style.backgroundImage = photo ? "" : `linear-gradient(180deg, ${sc.ori[0]} 0%, ${sc.ori[1]} 55%, ${sc.ori[2]} 100%)`;
     $("credit").innerHTML = sc.credit;
   }
   const ORI = () => style === "origami";
@@ -552,7 +553,7 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
   const sleighLead = () => Math.max(-120, Math.min(120, vel * 0.11));
   const strips = ["far", "mid", "ground"].map((id) => $(id).firstElementChild);
   const PARALLAX = [0.12, 0.45, 1];
-  const sky = $("sky"), sleighWrap = $("sleighWrap");
+  const skyPan = $("skyPan"), sleighWrap = $("sleighWrap");
 
   function step(dt, t) {
     const target = sel * SP;
@@ -561,8 +562,8 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
     strips.forEach((el, i) => { el.style.transform = `translate3d(${-mod(cam * PARALLAX[i], W)}px,0,0)`; });
     if (style === "photo") {
       const sc = SCENES[scene], range = sc.bw - W, p = mod(cam * 0.05, range * 2); // ping-pong pan across the wide photo
-      sky.style.backgroundPosition = `${-(p > range ? range * 2 - p : p)}px ${sc.y}px`;
-    } else sky.style.backgroundPosition = "";
+      skyPan.style.transform = `translate3d(${-(p > range ? range * 2 - p : p)}px,0,0)`;
+    }
     renderStops();
     const speed = Math.min(1, Math.abs(vel) / 900);
     phase += dt * (reduce ? 0 : 4 + speed * 14);
