@@ -3,6 +3,10 @@
 A Christmas home screen for Android TV and Google TV. Santa's sleigh glides along a snowy road
 past your apps; each app sits in a gift box, a bauble, a little house or a snow globe.
 
+[![Snow Village demo](docs/demo.gif)](docs/demo.mp4)
+
+*Click the preview for the full-quality video (16 s, MP4).*
+
 - 4 icon types: Gift box, Bauble, House, Snow globe
 - 7 sceneries: Dusk, Pink dawn, Before dawn, Sunny day, Aurora, Snow village, Festive night
 - 2 styles: Photo and Origami
