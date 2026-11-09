@@ -1,0 +1,775 @@
+<title>Snow Village</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+@font-face { font-family: "Be Vietnam Pro"; src: url("fonts/BeVietnamPro-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Be Vietnam Pro"; src: url("fonts/BeVietnamPro-SemiBold.ttf"); font-weight: 600; }
+@font-face { font-family: "Be Vietnam Pro"; src: url("fonts/BeVietnamPro-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Dancing Script"; src: url("fonts/DancingScript.ttf"); font-weight: 400 700; }
+/* Layout: page chrome around one 1920x1080 TV stage scaled to fit; the stage is the product. */
+:root {
+  --bg: #0d0b14; --panel: #171324; --fg: #efeaf7; --muted: #a69cbf; --accent: #e7c27a; --line: #2a2440;
+  --sans: "Be Vietnam Pro", system-ui, sans-serif; --script: "Dancing Script", cursive;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; } /* the panel uses display:flex, which would otherwise override the hidden attribute */
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
+.tv, .screen { position: fixed; inset: 0; overflow: hidden; background: #000; }
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tcredit { margin: 0; font: 400 18px var(--sans); color: #7d7591; }
+.tcredit a { color: inherit; text-decoration: none; }
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; font-family: var(--sans); }
+.layer, #fx, #sheet, #fly, #app { position: absolute; inset: 0; }
+.strip { position: absolute; left: 0; top: 0; width: 3840px; height: 1080px; display: flex; will-change: transform; }
+.strip > svg { flex: 0 0 1920px; }
+#sky { background-repeat: no-repeat; }
+#stops .stop { position: absolute; top: 560px; width: 340px; margin-left: -170px; display: flex; flex-direction: column; align-items: center; will-change: transform; }
+.tile { position: absolute; left: 100px; top: 70px; width: 140px; height: 140px; border-radius: 34px; display: grid; place-items: center; color: #fff; font: 700 38px var(--sans); letter-spacing: -0.02em; overflow: hidden; transition: box-shadow 220ms ease; }
+.tile svg { width: 64px; height: 64px; }
+.label { margin-top: 6px; font: 700 26px var(--sans); letter-spacing: 0.04em; text-transform: uppercase; transition: opacity 220ms ease; }
+#sleighWrap { position: absolute; left: 0; top: 742px; width: 560px; height: 230px; will-change: transform; }
+#sleighFlip { width: 100%; height: 100%; transition: transform 320ms cubic-bezier(0.3, 0.7, 0.2, 1); }
+.leg { transform-box: fill-box; transform-origin: 50% 0; }
+#hud { position: absolute; top: 44px; right: 64px; display: flex; flex-direction: column; align-items: end; gap: 2px; pointer-events: none; }
+.greet { font: 600 50px var(--script); color: #ffe6a6; text-shadow: 0 2px 14px rgb(60 20 60 / 0.5); }
+#sheet { transform: translateY(100%); }
+#fly { pointer-events: none; }
+#fly .tile { left: 890px; top: 470px; transition: none; }
+#app { display: grid; place-content: center; justify-items: center; gap: 22px; background: #0c0b10; opacity: 0; pointer-events: none; }
+#app .tile { position: relative; left: auto; top: auto; width: 200px; height: 200px; border-radius: 48px; }
+#app p { margin: 0; font: 600 44px var(--sans); color: #fff; }
+#app small { font: 400 26px var(--sans); color: #9a95a8; }
+#theme { position: absolute; left: 50%; top: 50%; width: 1480px; transform: translate(-50%, -50%); background: rgb(12 10 20 / 0.9); border: 1px solid rgb(255 255 255 / 0.14); border-radius: 32px; padding: 56px 64px 48px; display: flex; flex-direction: column; gap: 0; color: #fff; box-shadow: 0 40px 120px rgb(0 0 0 / 0.55); }
+#theme h2 { margin: 0 0 18px; font: 700 50px var(--sans); }
+.trow { display: grid; grid-template-columns: 250px 1fr; align-items: center; column-gap: 32px; padding: 30px 0; border-top: 1px solid rgb(255 255 255 / 0.1); opacity: 0.55; transition: opacity 200ms ease; }
+.trow.focus { opacity: 1; }
+.trow > span { font: 600 28px var(--sans); color: #cfc7e6; }
+.chips { display: flex; flex-wrap: wrap; gap: 20px 24px; }
+.chip { font: 600 28px var(--sans); padding: 16px 34px; line-height: 1.2; white-space: nowrap; border-radius: 999px; border: 2px solid rgb(255 255 255 / 0.2); color: #efeaf7; transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease; }
+.chip.sel { background: #e7c27a; color: #1a1408; border-color: #e7c27a; }
+.trow.focus .chip.sel { box-shadow: 0 0 0 4px rgb(255 255 255 / 0.9); transform: scale(1.06); }
+.thint { margin: 0; padding-top: 26px; border-top: 1px solid rgb(255 255 255 / 0.1); font: 400 22px var(--sans); color: #a69cbf; }
+#world { position: absolute; inset: 0; transform-origin: 960px 540px; }
+/* door light: one small circle scaled up (cheap on phones) instead of zooming the whole scene */
+#burst { position: absolute; left: 0; top: 0; width: 100px; height: 100px; margin: -50px 0 0 -50px; border-radius: 50%; background: radial-gradient(circle, #fffbe8 0%, #ffe3a3 40%, #ffc96b 72%, #ffc96b 100%); transform: scale(0); pointer-events: none; will-change: transform; }
+
+/* icon objects: back svg, the app tile, front svg, stacked inside .obj */
+.obj { position: relative; width: 340px; height: 260px; }
+.obj > svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; }
+.kind-gift .tile { left: 115px; top: 132px; width: 110px; height: 110px; border-radius: 26px; transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.stop.on .kind-gift .tile { transform: translateY(-128px); }
+.kind-gift .lid { transform-box: view-box; transform-origin: 270px 150px; transition: transform 520ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.stop.on .kind-gift .lid { transform: translate(64px, -36px) rotate(26deg); }
+.kind-bauble { height: 700px; transform-origin: 170px 0; }
+.kind-bauble .tile { left: 105px; top: 475px; width: 130px; height: 130px; border-radius: 50%; }
+.kind-bauble .glow { opacity: 0; transition: opacity 400ms ease; }
+.stop.on .kind-bauble { animation: swing 2.2s cubic-bezier(0.2, 0.7, 0.3, 1); }
+.stop.on .kind-bauble .glow { opacity: 1; }
+@keyframes swing { 0% { transform: rotate(0); } 15% { transform: rotate(7deg); } 35% { transform: rotate(-5deg); } 55% { transform: rotate(3deg); } 75% { transform: rotate(-1.4deg); } 100% { transform: rotate(0); } }
+.kind-house .tile { left: 124px; top: 70px; width: 92px; height: 92px; border-radius: 22px; }
+.kind-house .win { fill: #2a2133; transition: fill 450ms ease; }
+.stop.on .kind-house .win { fill: #ffd27a; }
+.kind-house .wglow, .kind-house .smoke { opacity: 0; transition: opacity 450ms ease; }
+.stop.on .kind-house .wglow { opacity: 1; }
+.stop.on .kind-house .smoke { opacity: 0.85; }
+.kind-house .smoke circle { transform-box: fill-box; transform-origin: center; animation: smoke 2.6s ease-out infinite; }
+.kind-house .smoke circle:nth-child(2) { animation-delay: 0.85s; }
+.kind-house .smoke circle:nth-child(3) { animation-delay: 1.7s; }
+@keyframes smoke { from { transform: translate(0, 0) scale(0.6); opacity: 0.9; } to { transform: translate(18px, -70px) scale(1.6); opacity: 0; } }
+.kind-house .door { transform-box: fill-box; transform-origin: 0 50%; }
+.kind-globe .tile { left: 112px; top: 62px; width: 116px; height: 116px; border-radius: 30px; }
+.kind-globe .gsnow { transform-box: view-box; transform-origin: 170px 120px; }
+.stop.on .kind-globe .gsnow { animation: spin 4s linear infinite; }
+.stop.on .kind-globe { animation: shake 700ms ease-in-out; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shake { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-3deg); } 40% { transform: rotate(3deg); } 60% { transform: rotate(-2deg); } 80% { transform: rotate(1deg); } }
+.kind-globe { transform-origin: 170px 250px; }
+.kind-globe .glass { transform-box: view-box; transform-origin: 170px 120px; }
+@media (prefers-reduced-motion: reduce) { .obj, .obj * { animation: none !important; transition: none !important; } }
+
+/* Photo style: real dusk photo, illustrated sleigh, snow banks with icons set into them */
+[data-style="photo"] #sky { background-image: url("img/strymba.jpg"); filter: saturate(1.05) brightness(0.9); }
+[data-style="photo"] #sky::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(30 18 60 / 0.25), transparent 35%, rgb(60 40 100 / 0.35) 70%); }
+[data-style="photo"] .label { color: #fff; text-shadow: 0 2px 10px rgb(40 20 70 / 0.7); }
+[data-style="photo"] .tile { box-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.18), 0 10px 24px rgb(60 40 110 / 0.35); }
+[data-style="photo"] .stop.on .tile { box-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.18), 0 0 0 6px #fff, 0 0 46px 12px rgb(255 214 140 / 0.85); }
+[data-style="photo"] #sheet { background: linear-gradient(180deg, #ffffff, #e6def5); }
+
+/* Origami style: folded paper night, two-tone facets everywhere */
+[data-style="origami"] #sky { background: linear-gradient(180deg, #15204a 0%, #26366b 55%, #4a5893 100%); }
+[data-style="origami"] .label { color: #1f2a52; background: #fbf8f1; padding: 4px 16px; border-radius: 4px; box-shadow: 0 3px 0 #d9d1bf; }
+[data-style="origami"] .tile { border-radius: 10px; box-shadow: 0 6px 0 rgb(0 0 0 / 0.15); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+[data-style="origami"] .tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgb(255 255 255 / 0.18) 50%, rgb(0 0 0 / 0.12) 50%); }
+[data-style="origami"] .stop.on .tile { box-shadow: 0 6px 0 rgb(0 0 0 / 0.15), 0 0 0 6px #ffd27a, 0 0 40px 10px rgb(255 210 122 / 0.6); }
+[data-style="origami"] #sheet { background: repeating-linear-gradient(135deg, #f4efe4 0 120px, #ece5d6 120px 240px); }
+[data-style="origami"] .greet { color: #ffd27a; }
+</style>
+
+<main class="tv">
+  <div class="screen" id="screen">
+    <div id="stage" data-style="photo" role="application" aria-label="Màn hình TV: trái phải để chọn ứng dụng, Enter để mở">
+      <div id="world">
+        <div class="layer" id="sky"></div>
+        <div class="layer" id="far"><div class="strip"></div></div>
+        <div class="layer" id="mid"><div class="strip"></div></div>
+        <div class="layer" id="ground"><div class="strip"></div></div>
+        <div class="layer" id="stops"></div>
+        <div id="sleighWrap"><div id="sleighFlip"><div id="sleigh"></div></div></div>
+        <canvas id="fx" width="1920" height="1080"></canvas>
+      </div>
+      <div id="burst"></div>
+      <div id="hud"><span class="greet" id="greet">Merry Christmas</span></div>
+      <div id="sheet"></div>
+      <div id="fly"></div>
+      <div id="app"><div class="tile"></div><p></p><small>Press Back to return</small></div>
+      <div id="theme" hidden role="dialog" aria-label="Theme"><h2>Theme</h2><div id="trows"></div>
+        <p class="thint">← → change &nbsp;·&nbsp; ↑ ↓ row &nbsp;·&nbsp; OK save &nbsp;·&nbsp; Back cancel</p><p class="tcredit">Background: <span id="credit"></span></p></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+(() => {
+  const W = 1920, CX = 960, SP = 600;          // stage width, centre, distance between stops
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), fx = $("fx"), ctx = fx.getContext("2d");
+
+  const bridge = window.Android; // set by the app; absent when the page is opened in a browser
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const THEME = { n: "Theme", theme: true, bg: "linear-gradient(135deg,#e7c27a,#b0549b)", g: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z"/><path d="M19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9z" opacity=".85"/></svg>' };
+  const DEMO = ["Movies", "Music", "Photos", "Games", "Browser", "Settings"].map((n, i) => ({ n, bg: `hsl(${i * 53 + 10} 50% 40%)`, g: n[0] }));
+  const APPS = (bridge ? JSON.parse(bridge.apps()).map((a) => ({ n: a.label, pkg: a.pkg, bg: "#1b1826", g: `<img src="${a.icon}" alt="">` })) : DEMO).concat([THEME]);
+  const mod = (a, n) => ((a % n) + n) % n;
+
+  // --- deterministic random so tiled scenery looks hand-placed but repeats seamlessly ---
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const wrap3 = (draw) => [-W, 0, W].map((o) => `<g transform="translate(${o},0)">${draw()}</g>`).join("");
+  const svg = (inner, h = 1080) => `<svg viewBox="0 0 1920 ${h}" width="1920" height="${h}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+  // ================= PHOTO STYLE =================
+  function photoPines() {
+    const p = P(); seed = 11; let s = "";
+    const bulbs = ["#ffd36b", "#ff6b6b", "#7fd1ff", "#b6ff8a"];
+    for (let i = 0; i < 44; i++) {
+      const x = i * 44 + rnd() * 30, h = (110 + rnd() * 150) * (p.pineScale || 1), w = h * 0.36, y = 770;
+      if (p.accent === "cabins" && i % 7 === 3) { s += cabin(x, y); continue; }
+      s += `<path d="M${x},${y - h} L${x + w},${y} L${x - w},${y}Z" fill="url(#pine)"/>`;
+      if (p.accent === "rim") s += `<path d="M${x},${y - h} L${x + w},${y}" stroke="#ffcf8a" stroke-width="3" opacity=".75"/>`;
+      s += `<path d="M${x},${y - h} L${x + w * 0.42},${y - h * 0.58} L${x},${y - h * 0.66} L${x - w * 0.42},${y - h * 0.58}Z" fill="${p.cap}" opacity=".88"/>`;
+      if (p.accent === "lights") for (let b = 0; b < 3; b++) {
+        const t = 0.35 + rnd() * 0.6, bx = x + (rnd() - 0.5) * w * 1.6 * t, by = y - h + h * t, c = bulbs[(i + b) % 4];
+        s += `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="9" fill="${c}" opacity=".3"/><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="3" fill="${c}"/>`;
+      }
+    }
+    if (p.accent === "decorated") [330, 990, 1650].forEach((x) => (s += xmasTree(x, 772, 250)));
+    return svg(`<defs><linearGradient id="pine" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.pine[0]}"/><stop offset="1" stop-color="${p.pine[1]}"/></linearGradient>
+      <linearGradient id="xmas" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fa86a"/><stop offset="1" stop-color="#17583a"/></linearGradient></defs>${wrap3(() => s)}`);
+  }
+  const starPts = (x, y, r) => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r; return `${(x + Math.cos(a) * rr).toFixed(1)},${(y + Math.sin(a) * rr).toFixed(1)}`; }).join(" ");
+  // a full decorated Christmas tree standing among the (lowered) pines: three snowy tiers, tinsel, glowing bulbs, a big star
+  function xmasTree(x, y, h) {
+    const bulbs = ["#ff4d5e", "#ffd36b", "#5fb4ff", "#7dff9e", "#ff8ad8"];
+    let s = `<rect x="${x - 9}" y="${y - 26}" width="18" height="28" fill="#5a3a22"/>`;
+    for (let t = 0; t < 3; t++) {
+      const base = y - 20 - t * h * 0.27, th = h * 0.46, tw = h * (0.42 - t * 0.09);
+      s += `<path d="M${x - tw},${base} L${x},${base - th} L${x + tw},${base}Z" fill="url(#xmas)"/>`;
+      s += `<path d="M${x - tw},${base} Q${x - tw / 2},${base - 8} ${x},${base} T${x + tw},${base}" stroke="#f4f8ff" stroke-width="5" fill="none"/>`;
+      s += `<path d="M${x - tw * 0.8},${base - th * 0.3} Q${x},${base - th * 0.05} ${x + tw * 0.8},${base - th * 0.38}" stroke="#ffd36b" stroke-width="3" fill="none"/>`;
+      for (let b = 0; b < 5; b++) {
+        const bx = x + (b - 2) * tw * 0.36, by = base - 10 - Math.abs(b - 2) * 6, c = bulbs[(b + t) % 5];
+        s += `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="13" fill="${c}" opacity=".35"/><circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="5.5" fill="${c}"/>`;
+      }
+    }
+    const top = y - 20 - 2 * h * 0.27 - h * 0.46;
+    return s + `<circle cx="${x}" cy="${top}" r="40" fill="#ffd36b" opacity=".3"/><polygon points="${starPts(x, top, 22)}" fill="#ffe08a" stroke="#fff6cf" stroke-width="2"/>`;
+  }
+  // a small lit cabin where a pine would stand (village pack)
+  function cabin(x, y) {
+    return `<path d="M${x - 44},${y} L${x - 44},${y - 46} L${x},${y - 82} L${x + 44},${y - 46} L${x + 44},${y}Z" fill="#2b2230"/>
+      <path d="M${x - 54},${y - 44} L${x},${y - 90} L${x + 54},${y - 44} L${x + 44},${y - 40} L${x},${y - 76} L${x - 44},${y - 40}Z" fill="#f2f5fb"/>
+      <circle cx="${x - 16}" cy="${y - 30}" r="22" fill="#ffc96b" opacity=".3"/><rect x="${x - 24}" y="${y - 38}" width="16" height="16" fill="#ffd27a"/>
+      <circle cx="${x + 18}" cy="${y - 30}" r="22" fill="#ffc96b" opacity=".3"/><rect x="${x + 10}" y="${y - 38}" width="16" height="16" fill="#ffd27a"/>`;
+  }
+  // per-pack light layer behind the pines: dawn rays, pre-dawn mist, aurora glow
+  function photoFar() {
+    const p = P();
+    if (p.accent === "aurora") return svg(`<defs><linearGradient id="aur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5dffb0" stop-opacity="0"/><stop offset=".7" stop-color="#5dffb0" stop-opacity=".28"/><stop offset="1" stop-color="#5dffb0" stop-opacity="0"/></linearGradient></defs>
+      <rect y="420" width="1920" height="360" fill="url(#aur)"/>`);
+    if (p.accent === "rays") return svg(`<defs><linearGradient id="ray" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd1dc" stop-opacity=".45"/><stop offset="1" stop-color="#ffd1dc" stop-opacity="0"/></linearGradient></defs>
+      <path d="M0,0 L520,0 L1400,900 L900,900Z" fill="url(#ray)"/><path d="M700,0 L980,0 L1900,820 L1600,860Z" fill="url(#ray)" opacity=".6"/>`);
+    if (p.accent === "rim") return svg(`<defs><linearGradient id="fog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe8f4" stop-opacity="0"/><stop offset=".5" stop-color="#dfe8f4" stop-opacity=".55"/><stop offset="1" stop-color="#dfe8f4" stop-opacity="0"/></linearGradient></defs>
+      <rect y="600" width="1920" height="220" fill="url(#fog)"/>`);
+    return svg("");
+  }
+  function photoGround() {
+    const p = P(); seed = 3; let dots = "";
+    for (let i = 0; i < 120; i++) dots += `<circle cx="${rnd() * 1920}" cy="${60 + rnd() * 260}" r="${0.8 + rnd() * 2.2}" fill="${i % 5 ? "#fff" : p.sparkle}" opacity="${0.4 + rnd() * 0.6}"/>`;
+    const wave = "M0,40 C160,10 320,10 480,40 S800,70 960,40 S1280,10 1440,40 S1760,70 1920,40";
+    return `<svg viewBox="0 0 1920 340" width="1920" height="340" style="margin-top:740px" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="snowG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${p.snow[0]}"/><stop offset=".55" stop-color="${p.snow[1]}"/><stop offset="1" stop-color="${p.snow[2]}"/></linearGradient></defs>
+      <path d="${wave} V340 H0Z" fill="url(#snowG)"/>
+      <path d="${wave}" fill="none" stroke="#fff" stroke-width="4" opacity=".9"/>
+      <path d="M0,204 H1920" stroke="${p.track}" stroke-width="7" opacity=".45"/><path d="M0,208 H1920" stroke="#fff" stroke-width="2" opacity=".7"/>
+      <path d="M0,240 H1920" stroke="${p.track}" stroke-width="7" opacity=".45"/><path d="M0,244 H1920" stroke="#fff" stroke-width="2" opacity=".7"/>
+      ${dots}</svg>`;
+  }
+
+  function photoSleigh() {
+    const leg = (x, y) => `<rect class="leg" x="${x}" y="${y}" width="9" height="50" rx="4" fill="#6e4429"/>`;
+    const deer = (cx, nose) => `
+      <g>${leg(cx - 34, 150)}${leg(cx - 18, 152)}${leg(cx + 18, 152)}${leg(cx + 34, 150)}
+      <ellipse cx="${cx}" cy="148" rx="52" ry="24" fill="#93603c"/><ellipse cx="${cx - 6}" cy="156" rx="34" ry="12" fill="#c99a6d" opacity=".55"/>
+      <path d="M${cx + 30},134 L${cx + 52},96 L${cx + 66},102 L${cx + 52},140Z" fill="#93603c"/>
+      <ellipse cx="${cx + 66}" cy="96" rx="22" ry="13" fill="#a86f45"/>
+      <circle cx="${cx + 86}" cy="98" r="${nose ? 7 : 5}" fill="${nose ? "#ff3b3b" : "#3b2416"}"/>${nose ? `<circle cx="${cx + 86}" cy="98" r="18" fill="#ff5a4a" opacity=".25"/>` : ""}
+      <circle cx="${cx + 66}" cy="90" r="3" fill="#1d120b"/>
+      <path d="M${cx + 58},86 L${cx + 50},62 L${cx + 40},56 M${cx + 50},62 L${cx + 56},50 M${cx + 66},84 L${cx + 70},60 L${cx + 80},52 M${cx + 70},60 L${cx + 64},48" stroke="#5b3a22" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M${cx - 40},132 Q${cx},120 ${cx + 40},132" stroke="#c8212f" stroke-width="7" fill="none"/>
+      <circle cx="${cx}" cy="127" r="5" fill="#ffd36b"/></g>`;
+    return `<svg viewBox="0 0 560 230" width="560" height="230" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="sl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d4283a"/><stop offset="1" stop-color="#7c0f1e"/></linearGradient>
+      <linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#a77a2c"/><stop offset=".5" stop-color="#ffe3a0"/><stop offset="1" stop-color="#a77a2c"/></linearGradient></defs>
+      <ellipse cx="280" cy="214" rx="250" ry="10" fill="#6c5a99" opacity=".25"/>
+      <g id="deers">${deer(300, false)}${deer(440, true)}</g>
+      <path d="M150,112 C220,118 280,128 350,130" stroke="#ffd36b" stroke-width="3" fill="none"/>
+      <g id="sleighBody">
+        <path d="M40,96 Q30,52 64,48 Q92,46 98,92Z" fill="#7a5233"/><path d="M46,70 Q64,60 84,68" stroke="#c99a6d" stroke-width="4" fill="none"/>
+        <rect x="70" y="40" width="22" height="22" fill="#2f8a5b"/><rect x="78" y="40" width="6" height="22" fill="#ffd36b"/>
+        <path d="M108,104 Q108,64 134,58 L150,58 Q170,62 170,100Z" fill="#c8212f"/>
+        <circle cx="138" cy="46" r="15" fill="#f6c9a6"/><path d="M122,48 Q138,78 154,48 Q148,62 138,64 Q128,62 122,48Z" fill="#fff"/>
+        <path d="M122,40 Q138,8 168,22 L154,38Z" fill="#c8212f"/><circle cx="168" cy="22" r="7" fill="#fff"/><rect x="120" y="36" width="36" height="8" rx="4" fill="#fff"/>
+        <path d="M20,196 L18,120 Q18,98 42,102 L92,114 L176,122 L210,122 Q232,122 232,144 L228,196Z" fill="url(#sl)"/>
+        <path d="M18,120 Q18,98 42,102 L92,114 L176,122 L210,122 Q232,122 232,144" stroke="url(#gold)" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M44,160 Q60,138 80,154 Q96,170 112,150" stroke="#ffd36b" stroke-width="4" fill="none"/>
+        <path d="M44,196 V212 M200,196 V212" stroke="url(#gold)" stroke-width="7"/>
+        <path d="M8,212 H226 Q258,212 258,186 Q258,166 240,170" stroke="url(#gold)" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <circle cx="236" cy="140" r="16" fill="#ffd36b" opacity=".35"/><circle cx="236" cy="140" r="6" fill="#fff4cf"/>
+      </g></svg>`;
+  }
+
+  // ================= ORIGAMI STYLE =================
+  function origamiFar() {
+    const p = P(); seed = 21; let s = "";
+    for (let i = 0; i < 7; i++) {
+      const x = i * 290 + rnd() * 80, h = 220 + rnd() * 200, w = 200 + rnd() * 120, y = 760, cap = 0.3;
+      s += `<path d="M${x - w},${y} L${x},${y - h} L${x},${y}Z" fill="${p.mtn[0]}"/><path d="M${x},${y - h} L${x + w},${y} L${x},${y}Z" fill="${p.mtn[1]}"/>`;
+      s += `<path d="M${x - w * cap},${y - h * (1 - cap)} L${x},${y - h} L${x},${y - h * (1 - cap) + 18}Z" fill="#fbf8f1"/><path d="M${x},${y - h} L${x + w * cap},${y - h * (1 - cap)} L${x},${y - h * (1 - cap) + 18}Z" fill="#dfe6f2"/>`;
+    }
+    let sky = ""; seed = 5;
+    if (p.stars) for (let i = 0; i < 40; i++) { const x = rnd() * 1920, y = 40 + rnd() * 380, r = 4 + rnd() * 7; sky += `<path d="M${x},${y - r} L${x + r * 0.3},${y - r * 0.3} L${x + r},${y} L${x + r * 0.3},${y + r * 0.3} L${x},${y + r} L${x - r * 0.3},${y + r * 0.3} L${x - r},${y} L${x - r * 0.3},${y - r * 0.3}Z" fill="#fff4d6" opacity="${0.5 + rnd() * 0.5}"/>`; }
+    // paper aurora: translucent folded ribbons
+    if (p.aurora) sky += `<path d="M0,260 L380,120 L760,240 L1140,90 L1520,210 L1920,110 L1920,200 L1520,300 L1140,180 L760,330 L380,210 L0,350Z" fill="#5dffb0" opacity=".32"/>
+      <path d="M0,330 L380,210 L760,330 L1140,180 L1520,300 L1920,200 L1920,240 L1520,340 L1140,230 L760,370 L380,260 L0,380Z" fill="#ff7ab6" opacity=".25"/>`;
+    // folded paper sun (day) or low dawn sun, two facets each
+    if (p.sun) sky +=`<path d="M300,${p.sun - 90} A90,90 0 0 0 300,${p.sun + 90}Z" fill="#ffd36b"/><path d="M300,${p.sun - 90} A90,90 0 0 1 300,${p.sun + 90}Z" fill="#f5b942"/>`;
+    return svg(sky + wrap3(() => s));
+  }
+  function origamiTrees() {
+    const p = P(); seed = 13; let s = "";
+    for (let i = 0; i < 26; i++) {
+      const x = i * 74 + rnd() * 40, h = 150 + rnd() * 110, w = h * 0.42, y = 772;
+      s += `<rect x="${x - 7}" y="${y - 22}" width="14" height="24" fill="#7a5235"/>`;
+      for (let t = 0; t < 3; t++) {
+        const ty = y - 18 - t * h * 0.24, th = h * 0.48 - t * 8, tw = w * (1 - t * 0.22);
+        s += `<path d="M${x - tw},${ty} L${x},${ty - th} L${x},${ty}Z" fill="${p.tree[0]}"/><path d="M${x},${ty - th} L${x + tw},${ty} L${x},${ty}Z" fill="${p.tree[1]}"/>`;
+      }
+      if (p.accent === "cabins" && i % 6 === 2) s += `<path d="M${x + 22},${y} L${x + 22},${y - 34} L${x + 50},${y - 58} L${x + 78},${y - 34} L${x + 78},${y}Z" fill="#fbf8f1"/><path d="M${x + 50},${y - 58} L${x + 78},${y - 34} L${x + 78},${y}L${x + 50},${y}Z" fill="#ebe3d3"/><path d="M${x + 16},${y - 32} L${x + 50},${y - 64} L${x + 84},${y - 32}" stroke="#e2574c" stroke-width="7" fill="none"/><rect x="${x + 42}" y="${y - 26}" width="14" height="14" fill="#ffd27a"/>`;
+    }
+    if (p.accent === "decorated") [330, 990, 1650].forEach((x) => (s += paperXmas(x, 772, 240)));
+    return svg(wrap3(() => s));
+  }
+  // folded-paper Christmas tree: two-tone tiers, diamond baubles, paper star
+  function paperXmas(x, y, h) {
+    const cols = ["#e2574c", "#ffd27a", "#4a7bd0", "#ff8ad8"];
+    let s = `<rect x="${x - 9}" y="${y - 26}" width="18" height="28" fill="#7a5235"/>`;
+    for (let t = 0; t < 3; t++) {
+      const base = y - 20 - t * h * 0.27, th = h * 0.46, tw = h * (0.42 - t * 0.09);
+      s += `<path d="M${x - tw},${base} L${x},${base - th} L${x},${base}Z" fill="#4cc08a"/><path d="M${x},${base - th} L${x + tw},${base} L${x},${base}Z" fill="#2f9466"/>`;
+      for (let b = 0; b < 4; b++) {
+        const bx = x + (b - 1.5) * tw * 0.42, by = base - 14;
+        s += `<rect x="${bx - 8}" y="${by - 8}" width="16" height="16" fill="${cols[(b + t) % 4]}" transform="rotate(45 ${bx} ${by})"/>`;
+      }
+    }
+    const top = y - 20 - 2 * h * 0.27 - h * 0.46;
+    return s + `<polygon points="${starPts(x, top, 22)}" fill="#ffd27a"/><polygon points="${starPts(x, top, 22).split(" ").slice(0, 6).join(" ")} ${x},${top}" fill="#f5b942"/>`;
+  }
+  function origamiGround() {
+    const [base, track, band, fold1, fold2, crease] = P().paper;
+    let folds = "";
+    for (let x = 0; x < 1920; x += 120) folds += `<path d="M${x},40 L${x + 60},10 L${x + 60},40Z" fill="${fold1}"/><path d="M${x + 60},10 L${x + 120},40 L${x + 60},40Z" fill="${fold2}"/>`;
+    let creases = "";
+    for (let x = -340; x < 1920; x += 160) creases += `<path d="M${x},340 L${x + 340},40" stroke="${crease}" stroke-width="2"/>`;
+    return `<svg viewBox="0 0 1920 340" width="1920" height="340" style="margin-top:740px" xmlns="http://www.w3.org/2000/svg">
+      <rect y="40" width="1920" height="300" fill="${base}"/>${creases}${folds}
+      <rect y="196" width="1920" height="14" fill="${track}"/><rect y="234" width="1920" height="14" fill="${track}"/>
+      <rect y="290" width="1920" height="50" fill="${band}"/></svg>`;
+  }
+
+  function origamiSleigh() {
+    const leg = (x, y) => `<polygon class="leg" points="${x},${y} ${x + 10},${y} ${x + 7},${y + 50} ${x + 1},${y + 50}" fill="#7b4b2a"/>`;
+    const deer = (cx, nose) => `
+      <g>${leg(cx - 36, 148)}${leg(cx - 20, 150)}${leg(cx + 16, 150)}${leg(cx + 32, 148)}
+      <polygon points="${cx - 54},150 ${cx - 30},124 ${cx + 44},126 ${cx + 54},150" fill="#b77a45"/><polygon points="${cx - 54},150 ${cx + 54},150 ${cx + 30},170 ${cx - 40},168" fill="#8c5a31"/>
+      <polygon points="${cx + 30},128 ${cx + 52},92 ${cx + 62},96 ${cx + 48},134" fill="#b77a45"/>
+      <polygon points="${cx + 48},82 ${cx + 90},94 ${cx + 52},104" fill="#c98d55"/><polygon points="${cx + 52},104 ${cx + 90},94 ${cx + 60},112" fill="#9a6238"/>
+      <polygon points="${cx + 86},88 ${cx + 96},94 ${cx + 86},100" fill="${nose ? "#ff4646" : "#3b2416"}"/>
+      <polyline points="${cx + 54},84 ${cx + 44},58 ${cx + 34},62 M${cx + 44},58 ${cx + 52},44" stroke="#5b3a22" stroke-width="5" fill="none"/>
+      <polyline points="${cx + 62},82 ${cx + 66},56 ${cx + 78},50 M${cx + 66},56 ${cx + 60},44" stroke="#5b3a22" stroke-width="5" fill="none"/>
+      <polygon points="${cx - 36},130 ${cx + 36},130 ${cx + 30},138 ${cx - 30},138" fill="#e2574c"/></g>`;
+    return `<svg viewBox="0 0 560 230" width="560" height="230" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="40,220 520,220 500,212 60,212" fill="#1d2a55" opacity=".25"/>
+      <g id="deers">${deer(300, false)}${deer(440, true)}</g>
+      <polyline points="150,112 350,130" stroke="#ffd27a" stroke-width="3"/>
+      <g id="sleighBody">
+        <polygon points="40,98 54,48 96,52 100,98" fill="#a0703f"/><polygon points="54,48 76,40 96,52" fill="#c99a6d"/>
+        <polygon points="108,104 120,60 168,60 172,104" fill="#e2574c"/><polygon points="140,60 168,60 172,104 140,104" fill="#b83d35"/>
+        <polygon points="124,34 152,34 154,58 122,58" fill="#f6c9a6"/><polygon points="120,54 156,54 138,82" fill="#fbf8f1"/>
+        <polygon points="118,36 158,36 170,12" fill="#e2574c"/><rect x="164" y="6" width="12" height="12" fill="#fbf8f1" transform="rotate(45 170 12)"/>
+        <polygon points="18,196 18,108 92,114 176,120 232,124 232,196" fill="#e2574c"/><polygon points="18,196 232,196 232,160 18,150" fill="#b83d35"/>
+        <polyline points="18,108 92,114 176,120 232,124" stroke="#ffd27a" stroke-width="7" fill="none"/>
+        <polyline points="44,196 44,212 M200,196 200,212" stroke="#ffd27a" stroke-width="7"/>
+        <polyline points="8,212 232,212 256,196 256,176 244,172" stroke="#ffd27a" stroke-width="8" fill="none" stroke-linejoin="bevel"/>
+      </g></svg>`;
+  }
+
+  const STYLES = {
+    photo: { far: photoFar, mid: photoPines, ground: photoGround, sleigh: photoSleigh, flake: "dot" },
+    origami: { far: origamiFar, mid: origamiTrees, ground: origamiGround, sleigh: origamiSleigh, flake: "paper" },
+  };
+  let style = "photo", kind = "house", scene = "dusk";
+  // bw/bh: how big the photo is drawn; y: vertical offset; ori: origami sky gradient for the same mood
+  const COMMONS = "https://commons.wikimedia.org/wiki/File:";
+  const SCENES = {
+    dusk: { img: "img/strymba.jpg", bw: 2175, bh: 1080, y: 0, ori: ["#15204a", "#26366b", "#4a5893"],
+      credit: `<a href="${COMMONS}%D0%93%D0%BE%D1%80%D0%B0_%D0%A1%D1%82%D1%80%D0%B8%D0%BC%D0%B1%D0%B0_%D0%B2%D0%B7%D0%B8%D0%BC%D0%BA%D1%83.jpg" target="_blank" rel="noopener">“Гора Стримба взимку”</a> by Ryzhkov Sergey (CC BY-SA 4.0)` },
+    dawn: { img: "img/dawn.jpg", bw: 2300, bh: 1533, y: -320, ori: ["#433a7a", "#b06f9c", "#f4b9a4"],
+      credit: `<a href="${COMMONS}%D0%A0%D0%BE%D0%B6%D0%B5%D0%B2%D0%B8%D0%B9_%D1%80%D0%B0%D0%BD%D0%BE%D0%BA_%D0%B2_%D2%90%D0%BE%D1%80%D2%91%D0%B0%D0%BD%D0%B0%D1%85.jpg" target="_blank" rel="noopener">“Рожевий ранок в Ґорґанах”</a> by Vitalii Bashkatov (CC BY-SA 4.0)` },
+    beforedawn: { img: "img/beforedawn.jpg", bw: 2300, bh: 1535, y: -330, ori: ["#1b2944", "#3d5a7c", "#dba56c"],
+      credit: `<a href="${COMMONS}%D0%94%D0%BE_%D1%81%D0%B2%D1%96%D1%82%D0%B0%D0%BD%D0%BA%D1%83.jpg" target="_blank" rel="noopener">“До світанку”</a> by Swift11 (CC BY-SA 4.0)` },
+    aurora: { img: "img/aurora.jpg", bw: 2300, bh: 1643, y: -120, ori: ["#06121f", "#0d3343", "#1f6a5b"],
+      credit: `<a href="${COMMONS}Northern_Lights_in_Snowy_Forest.jpg" target="_blank" rel="noopener">“Northern Lights in Snowy Forest”</a> by Finnish Tourist Board (CC BY 3.0)` },
+    village: { img: "img/village.jpg", bw: 2300, bh: 1535, y: -300, ori: ["#0d1530", "#1f2d55", "#3b4f86"],
+      credit: `<a href="${COMMONS}Shirakawago.jpg" target="_blank" rel="noopener">“Shirakawago”</a> by Jordy Meow (CC BY-SA 3.0)` },
+    festive: { img: "img/festive.jpg", bw: 2300, bh: 1295, y: -405, // lifts the lit village and church above the pine line ori: ["#14286a", "#2b47a0", "#7d6bc4"],
+      credit: `<a href="${COMMONS}Upper_Canada_Village_(cropped).jpg" target="_blank" rel="noopener">“Upper Canada Village”</a> by Jazmin Million (CC BY-SA 2.0)` },
+    day: { img: "img/day.jpg", bw: 4177, bh: 1080, y: 0, ori: ["#3b86d1", "#7bb9e8", "#d3ebf8"],
+      credit: `<a href="${COMMONS}Maniniaro_-_Angelus_Peak,_Nelson_Lakes_National_Park,_New_Zealand.jpg" target="_blank" rel="noopener">“Maniniaro – Angelus Peak”</a> by Podzemnik (CC BY-SA 4.0)` },
+  };
+  // pack palettes: photo foreground (pines, snow, road) + origami paper colours, plus one signature detail each
+  const PAL = {
+    dusk: { pine: ["#4a3a6e", "#241a3a"], cap: "#efe9fb", snow: ["#fbf8ff", "#e3dbf3", "#b9acd8"], track: "#a99bcf", sparkle: "#ffd36b", accent: "lights",
+      mtn: ["#8ea7cf", "#6b84b3"], tree: ["#43a67b", "#2c7c59"], paper: ["#f4efe4", "#e2d9c6", "#e9e2d2", "#fbf8f1", "#e7e0d0", "#e3dccb"], stars: true },
+    dawn: { pine: ["#93607f", "#4a2c4f"], cap: "#ffeef2", snow: ["#fff8f6", "#f6dbe2", "#d9a9bd"], track: "#c98ea8", sparkle: "#ffb3c6", accent: "rays",
+      mtn: ["#e9b1b8", "#c48596"], tree: ["#5fae8c", "#3d8569"], paper: ["#fbefe9", "#ecd6d0", "#f1e0da", "#fff8f4", "#efdcd5", "#ead3cc"], sun: 640 },
+    beforedawn: { pine: ["#2c4060", "#121c2e"], cap: "#e6eef8", snow: ["#f2f6fb", "#d3dfec", "#9db2cc"], track: "#8ea6c4", sparkle: "#ffcf8a", accent: "rim",
+      mtn: ["#6f8bb0", "#4b6488"], tree: ["#3d8c79", "#245f53"], paper: ["#eef2f6", "#d8e0ea", "#e2e8ef", "#f8fafc", "#dde4ec", "#d3dce7"], stars: true },
+    day: { pine: ["#2f6b4a", "#173d2a"], cap: "#ffffff", snow: ["#ffffff", "#e6f0fa", "#b7cde6"], track: "#a9c0dc", sparkle: "#bfe3ff", accent: "none",
+      mtn: ["#a9c4e4", "#7f9fc8"], tree: ["#3fae6e", "#2a8050"], paper: ["#ffffff", "#e3ebf3", "#edf2f7", "#ffffff", "#e6edf4", "#dde6ef"], sun: 200 },
+    aurora: { pine: ["#1f3d3a", "#0b1a19"], cap: "#e8f4f0", snow: ["#f2f8f6", "#cfe3de", "#8fb5ad"], track: "#86aaa3", sparkle: "#7dffb2", accent: "aurora",
+      mtn: ["#5f8fa0", "#3f6a7c"], tree: ["#3a9a7a", "#24705a"], paper: ["#eef5f3", "#d6e6e1", "#e1ede9", "#f8fcfb", "#dceae5", "#d2e2dd"], stars: true, aurora: true },
+    village: { pine: ["#24324d", "#0f1626"], cap: "#e9eef8", snow: ["#f4f6fb", "#d6dcea", "#9aa6c2"], track: "#8f9cbb", sparkle: "#ffd36b", accent: "cabins",
+      mtn: ["#7f93bd", "#5a6e98"], tree: ["#3e9a76", "#2a7356"], paper: ["#f4efe4", "#e2d9c6", "#e9e2d2", "#fbf8f1", "#e7e0d0", "#e3dccb"], stars: true },
+    festive: { pine: ["#1f4a3a", "#0d241c"], cap: "#f0f6ff", snow: ["#f6f4ff", "#dcd8f4", "#a9a0d8"], track: "#9c93cf", sparkle: "#ff8ad8", accent: "decorated", pineScale: 0.55,
+      mtn: ["#8fa3d6", "#6a7fbf"], tree: ["#43a67b", "#2c7c59"], paper: ["#f4efe4", "#e2d9c6", "#e9e2d2", "#fbf8f1", "#e7e0d0", "#e3dccb"], stars: true },
+  };
+  Object.keys(SCENES).forEach((k) => (SCENES[k].pal = PAL[k]));
+  const P = () => SCENES[scene].pal;
+  function applyScene() {
+    const sc = SCENES[scene], sky = $("sky");
+    if (style === "photo") {
+      sky.style.backgroundImage = `url("${sc.img}")`;
+      sky.style.backgroundSize = `${sc.bw}px ${sc.bh}px`;
+    } else {
+      sky.style.backgroundImage = `linear-gradient(180deg, ${sc.ori[0]} 0%, ${sc.ori[1]} 55%, ${sc.ori[2]} 100%)`;
+      sky.style.backgroundSize = "";
+    }
+    $("credit").innerHTML = sc.credit;
+  }
+  const ORI = () => style === "origami";
+
+  // ================= ICON OBJECTS (back svg, tile, front svg) =================
+  function giftParts() {
+    const o = ORI(), red = o ? "#e2574c" : "url(#gR)", side = o ? "#b83d35" : "#7a0f1e", gold = o ? "#ffd27a" : "url(#gGold)";
+    const defs = o ? "" : `<defs><linearGradient id="gR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e03445"/><stop offset="1" stop-color="#8e1424"/></linearGradient><linearGradient id="gGold" x1="0" x2="1"><stop offset="0" stop-color="#b8892f"/><stop offset=".5" stop-color="#ffe3a0"/><stop offset="1" stop-color="#b8892f"/></linearGradient></defs>`;
+    return {
+      back: `<svg viewBox="0 0 340 260">${defs}<ellipse cx="170" cy="252" rx="130" ry="10" fill="#000" opacity=".18"/><rect x="86" y="140" width="168" height="18" fill="#3a0a12"/></svg>`,
+      front: `<svg viewBox="0 0 340 260"><rect x="80" y="148" width="180" height="104" fill="${red}"/><rect x="214" y="148" width="46" height="104" fill="${side}" opacity=".5"/>
+        <rect x="160" y="148" width="20" height="104" fill="${gold}"/><rect x="80" y="190" width="180" height="16" fill="${gold}"/>
+        <g class="lid"><rect x="70" y="118" width="200" height="34" fill="${red}"/><rect x="70" y="140" width="200" height="12" fill="${side}" opacity=".55"/><rect x="160" y="118" width="20" height="34" fill="${gold}"/>
+        <path d="M170,118 C140,78 110,96 128,117Z M170,118 C200,78 230,96 212,117Z" fill="${gold}"/><circle cx="170" cy="116" r="9" fill="${gold}"/></g></svg>`,
+    };
+  }
+  function baubleParts(i) {
+    const o = ORI(), k = mod(i, 4), [c1, c2] = [["#d62f3f", "#8a1020"], ["#2f8f5b", "#145f37"], ["#3a68c9", "#173a80"], ["#d9a43a", "#8a6418"]][k];
+    const ball = o
+      ? `<path d="M70,540 A100,100 0 0 1 270,540Z" fill="${c1}"/><path d="M70,540 A100,100 0 0 0 270,540Z" fill="${c2}"/><path d="M70,540 L270,540" stroke="#fbf8f1" stroke-width="3" opacity=".6"/>`
+      : `<defs><radialGradient id="bb${k}" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".22" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></radialGradient></defs><circle cx="170" cy="540" r="100" fill="url(#bb${k})"/>`;
+    return {
+      back: `<svg viewBox="0 0 340 700"><line x1="170" y1="0" x2="170" y2="424" stroke="#e7c27a" stroke-width="2.5"/>
+        <circle class="glow" cx="170" cy="540" r="140" fill="#ffd27a" fill-opacity=".5" style="filter:blur(22px)"/>${ball}
+        <path d="M160,424 Q170,402 180,424" stroke="#e7c27a" stroke-width="3" fill="none"/><rect x="150" y="422" width="40" height="22" rx="3" fill="#e7c27a"/></svg>`,
+      front: `<svg viewBox="0 0 340 700"><ellipse cx="124" cy="486" rx="26" ry="13" fill="#fff" opacity="${o ? 0.3 : 0.5}" transform="rotate(-35 124 486)"/></svg>`,
+    };
+  }
+  function houseParts() {
+    const o = ORI();
+    let planks = "";
+    if (!o) for (let y = 134; y < 250; y += 16) planks += `<line x1="70" y1="${y}" x2="270" y2="${y}" stroke="#3b2214" stroke-width="2" opacity=".5"/>`;
+    const walls = o
+      ? `<path d="M70,128 L170,48 L170,250 L70,250Z" fill="#fbf8f1"/><path d="M170,48 L270,128 L270,250 L170,250Z" fill="#ebe3d3"/>`
+      : `<path d="M70,128 L170,48 L270,128 L270,250 L70,250Z" fill="url(#hW)"/>${planks}`;
+    const roof = o
+      ? `<path d="M46,130 L170,26 L170,58 L68,144Z" fill="#e2574c"/><path d="M170,26 L294,130 L272,144 L170,58Z" fill="#b83d35"/>`
+      : `<path d="M44,130 L170,24 L296,130 L282,142 L170,50 L58,142Z" fill="#4a2e2a"/>
+         <path d="M38,128 L170,18 L302,128 L294,138 C282,130 272,144 260,132 C248,142 238,128 226,122 L170,42 L114,122 C102,128 92,142 80,132 C68,144 58,130 46,138Z" fill="#fff"/>`;
+    return {
+      back: `<svg viewBox="0 0 340 260"><defs><linearGradient id="hW" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4a2c"/><stop offset="1" stop-color="#4a2a18"/></linearGradient></defs>
+        <ellipse cx="170" cy="252" rx="150" ry="12" fill="${o ? "#e7e0d0" : "#fff"}"/>
+        <g class="smoke"><circle cx="228" cy="30" r="10" fill="#efe9f7"/><circle cx="228" cy="30" r="10" fill="#efe9f7"/><circle cx="228" cy="30" r="10" fill="#efe9f7"/></g>
+        <rect x="214" y="40" width="28" height="62" fill="${o ? "#c98d55" : "#8a4b34"}"/><rect x="210" y="36" width="36" height="10" rx="3" fill="#fff"/>
+        ${walls}${roof}
+        <circle class="wglow" cx="105" cy="185" r="44" fill="#ffd27a" fill-opacity=".45" style="filter:blur(14px)"/><circle class="wglow" cx="235" cy="185" r="44" fill="#ffd27a" fill-opacity=".45" style="filter:blur(14px)"/>
+        <rect class="win" x="88" y="168" width="34" height="34" rx="2"/><rect class="win" x="218" y="168" width="34" height="34" rx="2"/>
+        <path d="M105,168 V202 M88,185 H122 M235,168 V202 M218,185 H252" stroke="${o ? "#b83d35" : "#3b2214"}" stroke-width="3"/>
+        <rect x="148" y="182" width="44" height="68" fill="#ffd27a"/><rect class="door" x="148" y="182" width="44" height="68" fill="${o ? "#a0703f" : "#3b2214"}"/>
+        <circle cx="184" cy="218" r="3.5" fill="#ffd36b"/></svg>`,
+      front: "",
+    };
+  }
+  function globeParts() {
+    const o = ORI();
+    seed = 31; let dots = "";
+    for (let n = 0; n < 28; n++) { const a = rnd() * 6.283, r = Math.sqrt(rnd()) * 88; dots += `<circle cx="${(170 + Math.cos(a) * r).toFixed(1)}" cy="${(118 + Math.sin(a) * r).toFixed(1)}" r="${(1.5 + rnd() * 2.5).toFixed(1)}" fill="#fff"/>`; }
+    return {
+      back: `<svg viewBox="0 0 340 260"><defs><radialGradient id="gl" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#eef6ff" stop-opacity=".35"/><stop offset="1" stop-color="#7fa4dc" stop-opacity=".55"/></radialGradient>
+        <linearGradient id="wd" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8a5a35"/><stop offset="1" stop-color="#4a2a18"/></linearGradient></defs>
+        <ellipse cx="170" cy="254" rx="110" ry="8" fill="#000" opacity=".2"/>
+        <g class="glass"><circle cx="170" cy="118" r="104" fill="${o ? "#cfe0f2" : "url(#gl)"}" fill-opacity="${o ? 0.55 : 1}"/></g></svg>`,
+      front: `<svg viewBox="0 0 340 260"><ellipse cx="170" cy="190" rx="78" ry="20" fill="#fff"/>
+        <g class="gsnow">${dots}</g>
+        <g class="glass"><circle cx="170" cy="118" r="104" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="3"/>
+        <path d="M96,72 A88,88 0 0 1 148,30" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".7" fill="none"/></g>
+        <path d="M96,256 L244,256 L230,212 L110,212Z" fill="${o ? "#a0703f" : "url(#wd)"}"/><path d="M110,212 L230,212 L222,200 L118,200Z" fill="${o ? "#c99a6d" : "#9a6a42"}"/>
+        <rect x="140" y="226" width="60" height="14" rx="3" fill="#e7c27a" opacity=".85"/></svg>`,
+    };
+  }
+  const KINDS = {
+    gift: { top: 470, parts: giftParts },
+    bauble: { top: 0, parts: baubleParts },
+    house: { top: 470, parts: houseParts },
+    globe: { top: 470, parts: globeParts },
+  };
+
+  // ================= SCENE STATE =================
+  let sel = 0, cam = 0, vel = 0, dir = 1, busy = false, phase = 0;
+  const stopEls = [], stopKeys = [];
+  const stopsLayer = $("stops");
+  for (let i = 0; i < 5; i++) { const d = document.createElement("div"); d.className = "stop"; stopsLayer.appendChild(d); stopEls.push(d); stopKeys.push(""); }
+
+  function buildStyle(next) {
+    style = next;
+    stage.dataset.style = style;
+    const S = STYLES[style];
+    $("far").firstElementChild.innerHTML = S.far() + S.far();
+    $("mid").firstElementChild.innerHTML = S.mid() + S.mid();
+    $("ground").firstElementChild.innerHTML = S.ground() + S.ground();
+    $("sleigh").innerHTML = S.sleigh();
+    stopKeys.fill("");
+    syncTabs();
+  }
+  function setKind(next) {
+    kind = next;
+    stopKeys.fill("");
+    syncTabs();
+  }
+  function setScene(next) {
+    scene = next;
+    buildStyle(style); // pines, road, mountains and accents are redrawn in the new pack's colours
+  }
+  function syncTabs() {
+    applyScene();
+  }
+
+  const tileHTML = (a) => `<div class="tile" style="background:${a.bg};${a.n === "YouTube" ? "" : ""}">${a.g}</div>`;
+  function renderStops() {
+    const base = Math.round(cam / SP);
+    for (let k = -2; k <= 2; k++) {
+      const idx = base + k, el = stopEls[k + 2], app = APPS[mod(idx, APPS.length)];
+      const key = style + kind + idx;
+      if (stopKeys[k + 2] !== key) {
+        const p = KINDS[kind].parts(idx);
+        el.innerHTML = `<div class="obj kind-${kind}">${p.back}${tileHTML(app)}${p.front}</div><div class="label">${esc(app.n)}</div>`;
+        el.style.top = KINDS[kind].top + "px";
+        stopKeys[k + 2] = key;
+      }
+      const x = idx * SP - cam + CX, near = Math.max(0, 1 - Math.abs(x - CX) / SP);
+      el.style.transform = `translate3d(${x}px, ${(1 - near) * 18}px, 0) scale(${0.86 + near * 0.18})`;
+      el.classList.toggle("on", idx === sel && Math.abs(x - CX) < 40);
+      el.querySelector(".label").style.opacity = String(0.55 + near * 0.45);
+    }
+  }
+
+  // ================= SNOW =================
+  const flakes = Array.from({ length: reduce ? 60 : 170 }, () => ({ x: Math.random() * W, y: Math.random() * 1080, z: 0.3 + Math.random() * 0.7, p: Math.random() * 6.28, a: Math.random() * 6.28 }));
+  const spray = [];
+  function drawFlake(f, size, alpha) {
+    ctx.globalAlpha = alpha;
+    if (STYLES[style].flake === "dot") { ctx.beginPath(); ctx.arc(f.x, f.y, size, 0, 6.283); ctx.fill(); return; }
+    ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.a); ctx.fillRect(-size, -size, size * 2, size * 2); ctx.restore();
+  }
+  function snow(dt, t) {
+    ctx.clearRect(0, 0, W, 1080);
+    ctx.fillStyle = style === "photo" ? "#ffffff" : "#fff7e6";
+    for (const f of flakes) {
+      f.y += (40 + 70 * f.z) * dt;
+      f.x += (-vel * 0.22 * f.z + Math.sin(t * 0.8 + f.p) * 14 * f.z) * dt;
+      f.a += dt * (0.6 + f.z);
+      if (f.y > 1090) { f.y = -10; f.x = Math.random() * W; }
+      f.x = mod(f.x, W);
+      drawFlake(f, 1.2 + f.z * 3.2, 0.35 + f.z * 0.6);
+    }
+    const speed = Math.abs(vel);
+    if (!reduce && speed > 70) {
+      const sx = CX + sleighLead() - dir * 250;
+      for (let i = 0; i < Math.min(6, speed / 120); i++) spray.push({ x: sx + Math.random() * 30, y: 952 + Math.random() * 10, vx: -Math.sign(vel) * (60 + Math.random() * 220), vy: -(80 + Math.random() * 180), life: 0.7, z: 0.6 + Math.random() * 0.4, a: Math.random() * 6 });
+    }
+    for (let i = spray.length - 1; i >= 0; i--) {
+      const s = spray[i];
+      s.life -= dt; s.vy += 520 * dt; s.x += s.vx * dt; s.y += s.vy * dt; s.a += dt * 6;
+      if (s.life <= 0) { spray.splice(i, 1); continue; }
+      drawFlake(s, 2 + s.z * 2.5, Math.min(1, s.life * 1.6));
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ================= MOTION =================
+  // critically-damped-ish spring: presses chain smoothly, nothing waits for the previous move to finish
+  const K = reduce ? 260 : 95, C = 2 * Math.sqrt(K) * 0.94;
+  const sleighLead = () => Math.max(-120, Math.min(120, vel * 0.11));
+  const strips = ["far", "mid", "ground"].map((id) => $(id).firstElementChild);
+  const PARALLAX = [0.12, 0.45, 1];
+  const sky = $("sky"), sleighWrap = $("sleighWrap");
+
+  function step(dt, t) {
+    const target = sel * SP;
+    vel += (K * (target - cam) - C * vel) * dt;
+    cam += vel * dt;
+    strips.forEach((el, i) => { el.style.transform = `translate3d(${-mod(cam * PARALLAX[i], W)}px,0,0)`; });
+    if (style === "photo") {
+      const sc = SCENES[scene], range = sc.bw - W, p = mod(cam * 0.05, range * 2); // ping-pong pan across the wide photo
+      sky.style.backgroundPosition = `${-(p > range ? range * 2 - p : p)}px ${sc.y}px`;
+    } else sky.style.backgroundPosition = "";
+    renderStops();
+    const speed = Math.min(1, Math.abs(vel) / 900);
+    phase += dt * (reduce ? 0 : 4 + speed * 14);
+    const bob = reduce ? 0 : Math.sin(phase * 2) * (1.5 + speed * 4);
+    sleighWrap.style.transform = `translate3d(${CX - 280 + sleighLead()}px, ${bob}px, 0) rotate(${(-vel * 0.0022).toFixed(3)}deg)`;
+    document.querySelectorAll("#sleigh .leg").forEach((leg, i) => {
+      const swing = (reduce ? 0 : 6 + speed * 34) * Math.sin(phase + (i % 4 < 2 ? 0 : Math.PI) + (i % 2) * 0.6);
+      leg.style.transform = `rotate(${swing.toFixed(1)}deg)`;
+    });
+    snow(dt, t);
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    step(dt, now / 1000);
+    requestAnimationFrame(frame);
+  }
+
+  function move(d) {
+    if (busy) return;
+    if (d !== dir) { dir = d; $("sleighFlip").style.transform = `scaleX(${d})`; }
+    // keep the target at most 3 stops ahead of the camera so a held key glides instead of running away
+    if (Math.abs((sel + d) * SP - cam) <= 3 * SP) sel += d;
+  }
+
+  // ================= LAUNCH =================
+  const ease = "cubic-bezier(0.22, 1, 0.36, 1)";
+  const burst = $("burst");
+  let opened = [], openedKind = "";
+
+  /** Where an element sits in the 1920x1080 stage, whatever the page zoom. */
+  function stageBox(el) {
+    const r = el.getBoundingClientRect(), s = stage.getBoundingClientRect(), k = s.width / W;
+    return { x: (r.left - s.left) / k, y: (r.top - s.top) / k, w: r.width / k, h: r.height / k };
+  }
+  function showApp(app) {
+    const scr = $("app");
+    scr.querySelector(".tile").outerHTML = `<div class="tile" style="background:${app.bg}">${app.g}</div>`;
+    scr.querySelector("p").textContent = `Opening ${app.n}…`;
+    scr.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, fill: "forwards" });
+    busy = "app";
+    if (bridge && app.pkg) setTimeout(() => bridge.launch(app.pkg), 250);
+  }
+  // object-specific first beat: lid flies, bauble lifts, glass bursts
+  function prelude(stop) {
+    const go = (el, frames, opts) => el && opened.push(el.animate(frames, { fill: "forwards", easing: ease, ...opts }));
+    if (kind === "gift") go(stop.querySelector(".lid"), [{ transform: "translate(64px,-36px) rotate(26deg)" }, { transform: "translate(300px,-460px) rotate(90deg)", opacity: 0 }], { duration: 480 });
+    if (kind === "bauble") go(stop.querySelector(".obj"), [{ transform: "translateY(0)" }, { transform: "translateY(-70px)" }], { duration: 420 });
+    if (kind === "globe") {
+      stop.querySelectorAll(".glass").forEach((g) => go(g, [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(1.4)", opacity: 0 }], { duration: 360 }));
+      const b = stageBox(stop.querySelector(".obj"));
+      for (let i = 0; i < (reduce ? 0 : 50); i++) { const a = Math.random() * 6.283, v = 200 + Math.random() * 420; spray.push({ x: b.x + 170, y: b.y + 118, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 120, life: 0.9, z: 0.5 + Math.random() * 0.5, a }); }
+    }
+  }
+  function flyOut(stop, app) {
+    const src = stop.querySelector(".tile"), b = stageBox(src);
+    const fly = $("fly");
+    fly.innerHTML = tileHTML(app);
+    const t = fly.firstElementChild;
+    Object.assign(t.style, { left: b.x + "px", top: b.y + "px", width: b.w + "px", height: b.h + "px", borderRadius: getComputedStyle(src).borderRadius });
+    src.style.visibility = "hidden";
+    const dx = CX - (b.x + b.w / 2), dy = 540 - (b.y + b.h / 2), k = 320 / b.w;
+    $("sheet").animate([{ transform: "translateY(100%)" }, { transform: "translateY(0)" }], { duration: 560, easing: ease, fill: "forwards", delay: 180 });
+    return t.animate([
+      { transform: "translate(0,0) scale(1)" },
+      { transform: `translate(${dx}px,${dy}px) scale(${k})`, offset: 0.45 },
+      { transform: `translate(${dx}px,${dy}px) scale(${k})`, offset: 0.83 }, // ~500 ms hold in the middle
+      { transform: `translate(${dx}px,${dy}px) scale(${k * 1.25})`, opacity: 0 },
+    ], { duration: reduce ? 400 : 1450, easing: "ease-out", fill: "forwards", delay: 200 });
+  }
+  // house: the door swings open, then warm light pours out of the doorway and fills the screen
+  function enterHouse(stop, app) {
+    const door = stop.querySelector(".door"), d = stageBox(door);
+    opened.push(door.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0.06)" }], { duration: 420, easing: ease, fill: "forwards" }));
+    burst.style.left = `${d.x + d.w / 2}px`;
+    burst.style.top = `${d.y + d.h / 2}px`;
+    const glow = burst.animate([{ transform: "scale(0)" }, { transform: "scale(0.7)", offset: 0.3 }, { transform: "scale(48)" }],
+      { duration: reduce ? 300 : 950, delay: 360, easing: "cubic-bezier(0.5, 0, 0.8, 0.4)", fill: "forwards" });
+    opened.push(glow);
+    glow.onfinish = () => showApp(app);
+  }
+  function launch() {
+    const stop = stage.querySelector(".stop.on");
+    if (busy || !stop) return; // only once the sleigh has settled on a stop
+    const app = APPS[mod(sel, APPS.length)];
+    if (app.theme) return openTheme();
+    busy = true;
+    openedKind = kind;
+    if (kind === "house") return enterHouse(stop, app);
+    prelude(stop);
+    flyOut(stop, app).onfinish = () => showApp(app);
+  }
+  function back() {
+    if (busy !== "app") return;
+    busy = true;
+    $("app").animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: "forwards" });
+    const done = () => {
+      opened.forEach((a) => a.cancel());
+      opened = [];
+      $("fly").innerHTML = "";
+      stage.querySelectorAll(".stop .tile").forEach((t) => t.style.removeProperty("visibility"));
+      busy = false;
+    };
+    if (openedKind === "house") {
+      opened.forEach((a) => a.cancel());
+      opened = [];
+      burst.animate([{ transform: "scale(48)", opacity: 1 }, { transform: "scale(0)", opacity: 0 }], { duration: 600, easing: ease }).onfinish = done;
+      return;
+    }
+    $("sheet").animate([{ transform: "translateY(0)" }, { transform: "translateY(100%)" }], { duration: 480, easing: ease, fill: "forwards", delay: 120 }).onfinish = done;
+  }
+
+  // ================= INPUT =================
+  // ================= THEME PANEL (remote only: ↑↓ row, ←→ value with live preview, OK save, Back cancel) =================
+  const panel = $("theme");
+  const ROWS = [
+    { label: "Icon type", opts: [["gift", "Gift box"], ["bauble", "Bauble"], ["house", "House"], ["globe", "Snow globe"]], get: () => kind, set: setKind },
+    { label: "Scenery", opts: [["dusk", "Dusk"], ["dawn", "Pink dawn"], ["beforedawn", "Before dawn"], ["day", "Sunny day"], ["aurora", "Aurora"], ["village", "Snow village"], ["festive", "Festive night"]], get: () => scene, set: setScene },
+    { label: "Style", opts: [["photo", "Photo"], ["origami", "Origami"]], get: () => style, set: buildStyle },
+  ];
+  let themeRow = 0, saved = null;
+  function renderTheme() {
+    $("trows").innerHTML = ROWS.map((r, i) => `<div class="trow${i === themeRow ? " focus" : ""}"><span>${r.label}</span><div class="chips">${
+      r.opts.map(([v, t]) => `<span class="chip${v === r.get() ? " sel" : ""}">${t}</span>`).join("")}</div></div>`).join("");
+  }
+  function openTheme() {
+    if (busy) return;
+    busy = "theme";
+    saved = { kind, scene, style };
+    themeRow = 0;
+    renderTheme();
+    panel.hidden = false;
+    panel.animate([{ opacity: 0, transform: "translate(-50%,-46%) scale(.97)" }, { opacity: 1, transform: "translate(-50%,-50%) scale(1)" }], { duration: 320, easing: ease });
+  }
+  function closeTheme(keep) {
+    if (!keep) { kind = saved.kind; scene = saved.scene; buildStyle(saved.style); }
+    else try { localStorage.setItem("sv-theme", JSON.stringify({ kind, scene, style })); } catch (e) { /* not saved: the choice lasts until the app closes */ }
+    panel.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in" }).onfinish = () => { panel.hidden = true; busy = false; };
+  }
+  function themeKey(k) {
+    const r = ROWS[themeRow];
+    if (k === "ArrowUp" || k === "ArrowDown") themeRow = Math.max(0, Math.min(ROWS.length - 1, themeRow + (k === "ArrowDown" ? 1 : -1)));
+    else if (k === "ArrowLeft" || k === "ArrowRight") {
+      const i = r.opts.findIndex(([v]) => v === r.get());
+      r.set(r.opts[mod(i + (k === "ArrowRight" ? 1 : -1), r.opts.length)][0]); // live preview
+    } else if (k === "Enter") return closeTheme(true);
+    else if (k === "Escape") return closeTheme(false);
+    renderTheme();
+  }
+  // one entry point for the keyboard and the on-screen remote buttons
+  function press(k, repeat) {
+    if (busy === "theme") return themeKey(k);
+    if (k === "ArrowRight") move(1);
+    else if (k === "ArrowLeft") move(-1);
+    else if (k === "Enter" && !repeat) launch();
+    else if (k === "Escape") back();
+    else if (k === "Menu") openTheme();
+  }
+  const KEYMAP = { " ": "Enter", Backspace: "Escape", m: "Menu", M: "Menu", ContextMenu: "Menu" };
+  addEventListener("keydown", (e) => {
+    const k = KEYMAP[e.key] || e.key;
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", "Escape", "Menu"].includes(k)) return;
+    e.preventDefault();
+    press(k, e.repeat);
+  });
+  // the app forwards Back/Menu here (WebView never sees them); returns true when the page used Back
+  window.SV = {
+    press,
+    back: () => { if (busy === "theme" || busy === "app") { press("Escape"); return true; } return busy === true; },
+    resume: () => { if (busy === "app") back(); },
+  };
+
+  function fit() {
+    const k = Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = `translate(${(innerWidth - 1920 * k) / 2}px, ${(innerHeight - 1080 * k) / 2}px) scale(${k})`;
+  }
+  addEventListener("resize", fit);
+
+  // a different Christmas greeting every 20–30 s, picked at random, never the same twice in a row
+  const GREETINGS = [
+    "Merry Christmas", "Happy Holidays", "Season's Greetings", "Joy to the World", "Peace on Earth",
+    "Merry & Bright", "Warm Wishes", "Let It Snow", "'Tis the Season", "Have a Holly Jolly Christmas",
+    "Deck the Halls", "Ho Ho Ho!", "Silent Night, Holy Night", "Home for the Holidays", "Believe in the Magic",
+    "Tidings of Comfort & Joy", "Fa La La La La", "Wishing You a Cozy Christmas", "Jingle All the Way", "Happy Christmas",
+  ];
+  function nextGreeting() {
+    const el = $("greet");
+    let g;
+    do g = GREETINGS[Math.floor(Math.random() * GREETINGS.length)]; while (g === el.textContent);
+    const out = el.animate([{ opacity: 1, transform: "translateY(0)" }, { opacity: 0, transform: "translateY(-10px)" }], { duration: 500, easing: "ease-in", fill: "forwards" });
+    out.onfinish = () => {
+      el.textContent = g;
+      el.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 700, easing: ease, fill: "forwards" });
+    };
+    setTimeout(nextGreeting, 20000 + Math.random() * 10000);
+  }
+  setTimeout(nextGreeting, 20000 + Math.random() * 10000);
+
+  try {
+    const t = JSON.parse(localStorage.getItem("sv-theme") || "null");
+    if (t && KINDS[t.kind]) kind = t.kind;
+    if (t && SCENES[t.scene]) scene = t.scene;
+    if (t && STYLES[t.style]) style = t.style;
+  } catch (e) { /* no saved theme: defaults */ }
+  buildStyle(style);
+  fit();
+  requestAnimationFrame(frame);
+})();
+</script>
