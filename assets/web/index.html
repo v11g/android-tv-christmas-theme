@@ -499,13 +499,13 @@ body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
   function renderStops() {
     const base = Math.round(cam / SP);
     for (let k = -2; k <= 2; k++) {
-      const idx = base + k, el = stopEls[k + 2], app = APPS[mod(idx, APPS.length)];
+      const idx = base + k, slot = mod(idx, 5), el = stopEls[slot], app = APPS[mod(idx, APPS.length)]; // slot follows the app, so only the arriving stop is rebuilt
       const key = style + kind + idx;
-      if (stopKeys[k + 2] !== key) {
+      if (stopKeys[slot] !== key) {
         const p = KINDS[kind].parts(idx);
         el.innerHTML = `<div class="obj kind-${kind}">${p.back}${tileHTML(app)}${p.front}</div><div class="label">${esc(app.n)}</div>`;
         el.style.top = KINDS[kind].top + "px";
-        stopKeys[k + 2] = key;
+        stopKeys[slot] = key;
       }
       const x = idx * SP - cam + CX, near = Math.max(0, 1 - Math.abs(x - CX) / SP);
       el.style.transform = `translate3d(${x}px, ${(1 - near) * 18}px, 0) scale(${0.86 + near * 0.18})`;
